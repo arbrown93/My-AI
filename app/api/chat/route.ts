@@ -1,8 +1,8 @@
 // app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
-export const maxDuration = 300; // 5 minutes for long responses
+export const dynamic = "force-dynamic";
+export const maxDuration = 60; // 1 minutes for long responses
 
 interface Message {
   role: "user" | "assistant";
