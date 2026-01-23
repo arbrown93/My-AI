@@ -1,11 +1,11 @@
 // app/api/chat/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 export const maxDuration = 300; // 5 minutes for long responses
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -16,34 +16,40 @@ export async function POST(req: NextRequest) {
     const ollamaUrl = process.env.OLLAMA_BASE_URL;
     const ollamaApiKey = process.env.OLLAMA_API_KEY;
 
+    console.log("OLLAMA_BASE_URL:", ollamaUrl);
+    console.log("OLLAMA_API_KEY exists:", !!ollamaApiKey);
+
     if (!ollamaUrl || !ollamaApiKey) {
       return NextResponse.json(
-        { error: 'Server configuration error: Missing Ollama credentials' },
-        { status: 500 }
+        { error: "Server configuration error: Missing Ollama credentials" },
+        { status: 500 },
       );
     }
 
     // Get the last user message for the prompt
     const lastMessage = messages[messages.length - 1];
-    
+
     // Build context from conversation history
     const context = messages
       .slice(0, -1)
-      .map((m: Message) => `${m.role === 'user' ? 'Human' : 'Assistant'}: ${m.content}`)
-      .join('\n');
+      .map(
+        (m: Message) =>
+          `${m.role === "user" ? "Human" : "Assistant"}: ${m.content}`,
+      )
+      .join("\n");
 
-    const fullPrompt = context 
+    const fullPrompt = context
       ? `${context}\nHuman: ${lastMessage.content}\nAssistant:`
       : lastMessage.content;
 
     const response = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': ollamaApiKey,
+        "Content-Type": "application/json",
+        "X-API-Key": ollamaApiKey,
       },
       body: JSON.stringify({
-        model: 'llama3.1:70b',
+        model: "llama3.1:70b",
         prompt: fullPrompt,
         stream: stream,
         options: {
@@ -56,10 +62,10 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Ollama API error:', errorText);
+      console.error("Ollama API error:", errorText);
       return NextResponse.json(
         { error: `Ollama API error: ${response.statusText}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -81,7 +87,7 @@ export async function POST(req: NextRequest) {
 
               // Parse the JSON lines from Ollama
               const text = new TextDecoder().decode(value);
-              const lines = text.split('\n').filter(line => line.trim());
+              const lines = text.split("\n").filter((line) => line.trim());
 
               for (const line of lines) {
                 try {
@@ -89,20 +95,22 @@ export async function POST(req: NextRequest) {
                   if (json.response) {
                     // Send only the response text as SSE
                     controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ content: json.response })}\n\n`)
+                      encoder.encode(
+                        `data: ${JSON.stringify({ content: json.response })}\n\n`,
+                      ),
                     );
                   }
                   if (json.done) {
-                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
                   }
                 } catch (e) {
                   // Skip invalid JSON lines
-                  console.error('Failed to parse line:', line, e);
+                  console.error("Failed to parse line:", line, e);
                 }
               }
             }
           } catch (error) {
-            console.error('Stream error:', error);
+            console.error("Stream error:", error);
             controller.error(error);
           } finally {
             controller.close();
@@ -112,9 +120,9 @@ export async function POST(req: NextRequest) {
 
       return new Response(readable, {
         headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
         },
       });
     } else {
@@ -123,10 +131,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ content: data.response });
     }
   } catch (error) {
-    console.error('Chat API error:', error);
+    console.error("Chat API error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
